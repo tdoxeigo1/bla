@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Phantom Connect Only</title>
+  <title>Phantom Connect (Safe)</title>
   <style>
     body {
       font-family: sans-serif;
@@ -46,13 +46,18 @@
 
     document.getElementById('connectBtn').onclick = async () => {
       try {
-        const { createPhantom } = await import('https://esm.sh/@phantom/wallet-sdk@latest');
+        const namespace = 'phantom_embed';
 
-        const customNamespace = 'phantom_' + Date.now();
+        // Clean up global namespace if needed
+        if (window[namespace]) {
+          delete window[namespace];
+        }
+
+        const { createPhantom } = await import('https://esm.sh/@phantom/wallet-sdk@latest');
 
         phantom = await createPhantom({
           element: "wallet-iframe-container",
-          namespace: customNamespace,
+          namespace: namespace,
           colorScheme: "light",
         });
 
