@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Phantom Connect (Safe)</title>
+  <title>Phantom Embed Wallet (Safe)</title>
   <style>
     body {
       font-family: sans-serif;
       padding: 30px;
-      background: #f0f0f0;
+      background: #f9fafb;
+      color: #111;
     }
-    #connectBtn {
+    button {
       padding: 12px 20px;
       background: #6366f1;
       color: white;
@@ -18,10 +19,7 @@
       border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
-    }
-    #walletAddress {
-      margin-top: 20px;
-      font-weight: bold;
+      margin: 10px 10px 10px 0;
     }
     #wallet-iframe-container {
       width: 100%;
@@ -32,47 +30,69 @@
       margin-top: 30px;
       overflow: hidden;
     }
+    #info {
+      margin-top: 20px;
+      font-size: 15px;
+    }
   </style>
 </head>
 <body>
 
-  <button id="connectBtn">Connect Phantom Wallet</button>
-  <div id="walletAddress"></div>
+  <button id="connectBtn">🔌 Connect Phantom</button>
+  <button id="disconnectBtn" style="display:none;">❌ Disconnect</button>
 
+  <div id="info"></div>
   <div id="wallet-iframe-container"></div>
 
   <script type="module">
+    import { createPhantom } from "https://esm.sh/@phantom/wallet-sdk@latest";
+    import { Connection, LAMPORTS_PER_SOL } from "https://esm.sh/@solana/web3.js";
+
     let phantom = null;
+    let publicKey = null;
 
-    document.getElementById('connectBtn').onclick = async () => {
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const info = document.getElementById("info");
+
+    connectBtn.onclick = async () => {
       try {
-        const namespace = 'phantom_embed';
-
-        // Clean up global namespace if needed
-        if (window[namespace]) {
-          delete window[namespace];
+        if (!phantom) {
+          phantom = await createPhantom({
+            element: "wallet-iframe-container",
+            namespace: "phantom_embed_demo",
+            colorScheme: "light",
+            skipInjection: true, // prevents global variable conflict
+          });
         }
 
-        const { createPhantom } = await import('https://esm.sh/@phantom/wallet-sdk@latest');
+        const response = await phantom.solana.connect();
+        publicKey = response.publicKey;
 
-        phantom = await createPhantom({
-          element: "wallet-iframe-container",
-          namespace: namespace,
-          colorScheme: "light",
-        });
+        const address = publicKey.toString();
+        const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+        const balanceLamports = await connection.getBalance(publicKey);
+        const balance = (balanceLamports / LAMPORTS_PER_SOL).toFixed(4);
 
-        const result = await phantom.solana.connect();
-
-        if (result?.publicKey) {
-          const address = result.publicKey.toString();
-          document.getElementById('walletAddress').textContent = `✅ Connected: ${address}`;
-        } else {
-          throw new Error("No public key returned");
-        }
-
+        info.innerHTML = `✅ <strong>Connected:</strong> ${address}<br>💰 <strong>Balance:</strong> ${balance} SOL`;
+        connectBtn.style.display = "none";
+        disconnectBtn.style.display = "inline-block";
       } catch (err) {
-        console.error("Wallet connection failed", err);
-        document.getElementById('walletAddress').textContent = "❌ Connection failed: " + err.message;
+        console.error("Connection error:", err);
+        info.textContent = "❌ " + (err.message || "Failed to connect.");
+      }
+    };
+
+    disconnectBtn.onclick = async () => {
+      try {
+        await phantom?.solana.disconnect();
+        publicKey = null;
+        info.textContent = "🔌 Wallet disconnected.";
+        connectBtn.style.display = "inline-block";
+        disconnectBtn.style.display = "none";
+      } catch (err) {
+        console.error("Disconnect error:", err);
+        info.textContent = "❌ " + (err.message || "Failed to disconnect.");
       }
     };
   </script>
