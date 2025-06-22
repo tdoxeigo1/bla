@@ -852,20 +852,34 @@ document.getElementById('connect-phantom').addEventListener('click', async (e) =
     const connectBtn = document.getElementById('connect-phantom');
     
     try {
+        console.log('Starting connection process...');
+        
         // Show loading state
         connectBtn.innerHTML = 'Connecting <div class="spinner"></div>';
         
         // Show notification
         showNotification('Connecting to Phantom...');
         
+        // Check if container exists
+        const container = document.getElementById('wallet-iframe-container');
+        if (!container) {
+            throw new Error('Wallet iframe container not found');
+        }
+        
         // Show the iframe container
-        document.getElementById('wallet-iframe-container').classList.add('show');
+        console.log('Showing iframe container...');
+        container.classList.add('show');
+        
+        // Wait a moment to see the container
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Load Phantom SDK
+        console.log('Loading Phantom SDK...');
         const { createPhantom } = await import('https://esm.sh/@phantom/wallet-sdk@latest');
         
         // Create custom namespace
         const customNamespace = 'dropforge_' + Date.now();
+        console.log('Creating Phantom with namespace:', customNamespace);
         
         // Create Phantom instance
         window.phantom = await createPhantom({
@@ -874,8 +888,11 @@ document.getElementById('connect-phantom').addEventListener('click', async (e) =
             colorScheme: "dark"
         });
         
+        console.log('Phantom instance created, attempting to connect...');
+        
         // Connect wallet
         const response = await window.phantom.solana.connect();
+        console.log('Connection response:', response);
         
         if (response && response.publicKey) {
             window.isConnected = true;
@@ -889,8 +906,8 @@ document.getElementById('connect-phantom').addEventListener('click', async (e) =
             // Show success notification
             showNotification(`Wallet connected! Address: ${publicKeyString.slice(0,4)}...${publicKeyString.slice(-4)}`);
             
-            // *** HIDE THE IFRAME AFTER SUCCESS ***
-            document.getElementById('wallet-iframe-container').classList.remove('show');
+            // Hide the iframe after success
+            container.classList.remove('show');
             
             console.log('Connected to wallet:', publicKeyString);
         } else {
@@ -901,8 +918,11 @@ document.getElementById('connect-phantom').addEventListener('click', async (e) =
         showNotification('Failed to connect wallet: ' + error.message, true);
         connectBtn.innerHTML = 'Connect Phantom <svg class="phantom-logo" viewBox="0 0 24 24"><path fill="white" d="M12 0C5.374 0 0 5.374 0 12s5.374 12 12 12 12-5.374 12-12S18.626 0 12 0zm0 1.5c5.799 0 10.5 4.701 10.5 10.5S17.799 22.5 12 22.5 1.5 17.799 1.5 12 6.201 1.5 12 1.5zm4.441 5.384h-8.89a.56.56 0 0 0-.56.56v9.112c0 .31.25.56.56.56h1.988a.56.56 0 0 0 .56-.56v-2.793c0-.31.25-.56.56-.56h2.681c.31 0 .56.25.56.56v2.793c0 .31.25.56.56.56h1.988a.56.56 0 0 0 .56-.56V7.444a.56.56 0 0 0-.56-.56z"/></svg>';
         
-        // *** ALSO HIDE ON ERROR ***
-        document.getElementById('wallet-iframe-container').classList.remove('show');
+        // Hide iframe on error
+        const container = document.getElementById('wallet-iframe-container');
+        if (container) {
+            container.classList.remove('show');
+        }
     }
 });
     </script>
